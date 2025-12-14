@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard de Ocorrências - Chart.js</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .card h2 {
+      text-align: center;
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📊 Dashboard de Ocorrências</h1>
+
+  <section class="dashboard-grid">
+    <div class="card">
+      <h2>Ocorrências por Categoria</h2>
+      <canvas id="chartCategoria"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Ocorrências por Prioridade</h2>
+      <canvas id="chartPrioridade"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Ocorrências por Papel do Solicitante</h2>
+      <canvas id="chartPapel"></canvas>
+    </div>
+  </section>
+
+  <script>
+    // =============================
+    // Utilitários
+    // =============================
+
+    async function loadCSV(path) {
+      const response = await fetch(path);
+      const text = await response.text();
+
+      const lines = text.trim().split("\n");
+      const headers = lines[0].split(",");
+
+      return lines.slice(1).map(line => {
+        const values = line.split(",");
+        const row = {};
+
+        headers.forEach((h, i) => {
+          row[h] = values[i];
+        });
+
+        return row;
+      });
+    }
+
+    function countBy(data, field) {
+      return data.reduce((acc, item) => {
+        const key = item[field] || 'N/A';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+    }
+
+    function createChart(ctx, type, labels, values, title) {
+      return new Chart(ctx, {
+        type: type,
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'bottom' },
+            title: {
+              display: true,
+              text: title
+            }
+          }
+        }
+      });
+    }
+
+    // =============================
+    // Inicialização do Dashboard
+    // =============================
+
+    async function initDashboard() {
+      const fatoPath = './data/processed/fato_ocorrencia.csv';
+      const fatos = await loadCSV(fatoPath);
+
+      const categoriaAgg = countBy(fatos, 'occurrence_category');
+      const prioridadeAgg = countBy(fatos, 'priority');
+      const papelAgg = countBy(fatos, 'applicant_role');
+
+      createChart(
+        document.getElementById('chartCategoria'),
+        'pie',
+        Object.keys(categoriaAgg),
+        Object.values(categoriaAgg),
+        'Distribuição por Categoria'
+      );
+
+      createChart(
+        document.getElementById('chartPrioridade'),
+        'bar',
+        Object.keys(prioridadeAgg),
+        Object.values(prioridadeAgg),
+        'Distribuição por Prioridade'
+      );
+
+      createChart(
+        document.getElementById('chartPapel'),
+        'bar',
+        Object.keys(papelAgg),
+        Object.values(papelAgg),
+        'Distribuição por Papel do Solicitante'
+      );
+    }
+
+    initDashboard();
+  </script>
+
+</body>
+</html>
