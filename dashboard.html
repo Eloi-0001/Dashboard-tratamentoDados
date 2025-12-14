@@ -44,6 +44,17 @@
 
   <h1>📊 Dashboard de Ocorrências</h1>
 
+  <div style="margin-bottom:20px; display:flex; gap:20px; justify-content:center;">
+    <div>
+      <label><strong>Categoria:</strong></label>
+      <select id="filterCategoria"></select>
+    </div>
+    <div>
+      <label><strong>Prioridade:</strong></label>
+      <select id="filterPrioridade"></select>
+    </div>
+  </div>
+
   <section class="dashboard-grid">
     <div class="card">
       <h2>Ocorrências por Categoria</h2>
@@ -119,40 +130,81 @@
     // Inicialização do Dashboard
     // =============================
 
-    async function initDashboard() {
-      const fatoPath = './data/processed/fato_ocorrencia.csv';
-      const fatos = await loadCSV(fatoPath);
+    let fatosGlobais = [];
+let charts = {};
 
-      const categoriaAgg = countBy(fatos, 'occurrence_category');
-      const prioridadeAgg = countBy(fatos, 'priority');
-      const papelAgg = countBy(fatos, 'applicant_role');
+async function initDashboard() {
+  const fatoPath = './data/processed/fato_ocorrencia.csv';
+  fatosGlobais = await loadCSV(fatoPath);
 
-      createChart(
-        document.getElementById('chartCategoria'),
-        'pie',
-        Object.keys(categoriaAgg),
-        Object.values(categoriaAgg),
-        'Distribuição por Categoria'
-      );
+  initFilters(fatosGlobais);
+  updateCharts(fatosGlobais);
+}
 
-      createChart(
-        document.getElementById('chartPrioridade'),
-        'bar',
-        Object.keys(prioridadeAgg),
-        Object.values(prioridadeAgg),
-        'Distribuição por Prioridade'
-      );
+function initFilters(data) {
+  const categoriaSelect = document.getElementById('filterCategoria');
+  const prioridadeSelect = document.getElementById('filterPrioridade');
 
-      createChart(
-        document.getElementById('chartPapel'),
-        'bar',
-        Object.keys(papelAgg),
-        Object.values(papelAgg),
-        'Distribuição por Papel do Solicitante'
-      );
-    }
+  const categorias = ['Todos', ...new Set(data.map(d => d.occurrence_category))];
+  const prioridades = ['Todos', ...new Set(data.map(d => d.priority))];
 
-    initDashboard();
+  categorias.forEach(c => categoriaSelect.innerHTML += `<option value="${c}">${c}</option>`);
+  prioridades.forEach(p => prioridadeSelect.innerHTML += `<option value="${p}">${p}</option>`);
+
+  categoriaSelect.addEventListener('change', applyFilters);
+  prioridadeSelect.addEventListener('change', applyFilters);
+}
+
+function applyFilters() {
+  const categoria = document.getElementById('filterCategoria').value;
+  const prioridade = document.getElementById('filterPrioridade').value;
+
+  let filtrados = fatosGlobais;
+
+  if (categoria !== 'Todos') {
+    filtrados = filtrados.filter(d => d.occurrence_category === categoria);
+  }
+
+  if (prioridade !== 'Todos') {
+    filtrados = filtrados.filter(d => d.priority === prioridade);
+  }
+
+  updateCharts(filtrados);
+}
+
+function updateCharts(data) {
+  const categoriaAgg = countBy(data, 'occurrence_category');
+  const prioridadeAgg = countBy(data, 'priority');
+  const papelAgg = countBy(data, 'applicant_role');
+
+  Object.values(charts).forEach(chart => chart.destroy());
+
+  charts.categoria = createChart(
+    document.getElementById('chartCategoria'),
+    'pie',
+    Object.keys(categoriaAgg),
+    Object.values(categoriaAgg),
+    'Distribuição por Categoria'
+  );
+
+  charts.prioridade = createChart(
+    document.getElementById('chartPrioridade'),
+    'bar',
+    Object.keys(prioridadeAgg),
+    Object.values(prioridadeAgg),
+    'Distribuição por Prioridade'
+  );
+
+  charts.papel = createChart(
+    document.getElementById('chartPapel'),
+    'bar',
+    Object.keys(papelAgg),
+    Object.values(papelAgg),
+    'Distribuição por Papel do Solicitante'
+  );
+}
+
+initDashboard();
   </script>
 
 </body>
